@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="pragma" content="no-cache">
+<title>LabelSnip</title>
+<style>
+  /* Two-pane label workbench. Crop-to-4x6 for Flipkart/Amazon; full-page + thank-you note for Meesho. Brand: RABDATOR navy + teal, gold accent. */
+  :root{
+    --bg:#f4f6f9; --surface:#ffffff; --surface-2:#eef2f6; --line:#dbe2ea;
+    --fg:#0f2a43; --muted:#5a6b7b; --navy:#0f2a43; --teal:#0e7490; --teal-2:#0ea5b7;
+    --gold:#c79a3a; --ok:#1f9d55;
+    --shadow:0 1px 2px rgba(15,42,67,.06),0 8px 24px rgba(15,42,67,.08);
+    --radius:14px; --r-sm:9px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){ :root{
+    --bg:#0b1622; --surface:#12212f; --surface-2:#172a3a; --line:#223647;
+    --fg:#e7eef5; --muted:#92a6b7; --navy:#0b1622; --teal:#38b6cf; --teal-2:#53c9df;
+    --gold:#d9b25a; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--fg);line-height:1.5;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{margin:0;text-wrap:balance}
+  .wrap{max-width:1180px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left,0));padding-right:max(18px,env(safe-area-inset-right,0))}
+
+  header{background:linear-gradient(120deg,var(--navy),#143a5c);color:#fff}
+  .bar{display:flex;align-items:center;gap:14px;padding-block:16px}
+  .logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:1.32rem}
+  .mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--teal-2),var(--teal));display:grid;place-items:center;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+  .mark svg{width:22px;height:22px}
+  .logo small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#9fd6e0}
+  .tagline{margin-left:auto;font-size:.86rem;color:#bcd4e4;max-width:340px;text-align:right}
+  @media(max-width:640px){.tagline{display:none}}
+
+  main{padding-block:22px 40px}
+  .platforms{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .plat{cursor:pointer;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);padding:9px 16px;border-radius:999px;font-weight:600;font-size:.9rem;display:flex;gap:8px;align-items:center}
+  .plat .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+  .plat[aria-pressed="true"]{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 12%,var(--surface));color:var(--teal)}
+  .plat[aria-pressed="true"] .dot{background:var(--teal)}
+
+  .drop{border:2px dashed var(--line);border-radius:var(--radius);background:var(--surface);padding:40px 20px;text-align:center;cursor:pointer}
+  .drop:hover,.drop.hot{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 7%,var(--surface))}
+  .drop svg{width:46px;height:46px;color:var(--teal)}
+  .drop h2{font-size:1.1rem;margin:12px 0 4px}
+  .drop p{margin:0;color:var(--muted);font-size:.9rem}
+
+  .work{display:grid;grid-template-columns:1.25fr .95fr;gap:20px;align-items:start}
+  @media(max-width:860px){.work{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card-h{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .card-h h3{font-size:.96rem}
+  .card-h .spacer{margin-left:auto}
+  .card-b{padding:16px}
+
+  #stageWrap{display:grid;place-items:center;background:var(--surface-2);border-radius:var(--r-sm);padding:14px;min-height:260px;overflow:auto}
+  #stage{position:relative;line-height:0;touch-action:none;user-select:none}
+  #pageCanvas{display:block;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.18);max-width:100%}
+  #crop{position:absolute;border:2px solid var(--teal-2);box-shadow:0 0 0 9999px rgba(10,20,30,.5);cursor:move;border-radius:2px}
+  .hnd{position:absolute;width:16px;height:16px;background:var(--teal-2);border:2px solid #fff;border-radius:50%}
+  .hnd.nw{left:-9px;top:-9px;cursor:nwse-resize}.hnd.ne{right:-9px;top:-9px;cursor:nesw-resize}
+  .hnd.sw{left:-9px;bottom:-9px;cursor:nesw-resize}.hnd.se{right:-9px;bottom:-9px;cursor:nwse-resize}
+
+  .pagenav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;color:var(--muted);font-size:.86rem}
+  .controls{display:flex;flex-direction:column;gap:14px}
+  .ctl{display:flex;flex-direction:column;gap:6px}
+  .ctl label{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .seg{display:flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+  .seg button{flex:1;border:0;background:var(--surface);color:var(--fg);padding:8px 10px;font-weight:600;font-size:.85rem;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--teal);color:#fff}
+
+  textarea{width:100%;min-height:150px;resize:vertical;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--fg);padding:10px 12px;font-family:var(--sans);font-size:.9rem;line-height:1.5}
+  .check{display:flex;align-items:center;gap:9px;font-size:.9rem;color:var(--fg);cursor:pointer;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+  .check input{width:17px;height:17px;accent-color:var(--teal)}
+
+  .btn{cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-family:inherit;font-weight:600;font-size:.9rem;padding:10px 14px;border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:8px;justify-content:center}
+  .btn:hover{border-color:var(--teal)}
+  .btn svg{width:17px;height:17px}
+  .btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  .btn.primary:hover{background:var(--teal-2);border-color:var(--teal-2)}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#241a00}
+  .btn.ghost{background:transparent}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.block{width:100%}
+
+  .hint{font-size:.82rem;color:var(--muted)}
+  .pill{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+  .pill.saved{background:color-mix(in srgb,var(--ok) 16%,var(--surface));color:var(--ok)}
+
+  #out{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+  .lab{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:5px;align-items:center}
+  .lab img{width:100%;height:auto;background:#fff;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+  .lab b{font-size:.68rem;color:var(--teal);font-weight:700;text-align:center;word-break:break-word;line-height:1.2}
+  .lab span{font-size:.7rem;color:var(--muted)}
+  .empty{color:var(--muted);font-size:.9rem;text-align:center;padding:24px 8px}
+
+  .actions{position:sticky;bottom:0;margin-top:20px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow)}
+  .actions .count{font-size:.88rem;color:var(--muted)}
+  .actions .grow{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+  footer{color:var(--muted);font-size:.8rem;text-align:center;padding:26px 0 8px}
+  .foot-note{max-width:640px;margin:0 auto}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap bar">
+    <div class="logo">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5"/><path d="M3 21l3-1 11.5-11.5-2-2L4 18z"/><path d="M15 5l4 4"/></svg></span>
+      <span>LabelSnip<small>Crop · Note · Print</small></span>
+    </div>
+    <div class="tagline">Crop to 4&times;6, or print full labels with a thank-you note — sorted by SKU.</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="platforms" id="platforms" role="group" aria-label="Marketplace">
+    <button class="plat" data-plat="meesho" aria-pressed="true"><span class="dot"></span>Meesho</button>
+    <button class="plat" data-plat="flipkart" aria-pressed="false"><span class="dot"></span>Flipkart</button>
+    <button class="plat" data-plat="amazon" aria-pressed="false"><span class="dot"></span>Amazon</button>
+    <button class="plat" data-plat="custom" aria-pressed="false"><span class="dot"></span>Custom</button>
+    <button class="btn ghost" id="refreshApp" title="Reload if a preview looks stuck or glitchy" style="margin-left:auto;font-size:.82rem;padding:7px 13px;gap:6px">↻ Refresh</button>
+  </div>
+
+  <div id="dropZone" class="drop" tabindex="0" role="button" aria-label="Upload PDF">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg>
+    <h2>Drop your invoice / label PDF here</h2>
+    <p>or click to choose a file &middot; Meesho / Flipkart / Amazon &middot; stays on your device</p>
+    <input id="fileInput" type="file" accept="application/pdf" hidden>
+  </div>
+
+  <section id="workspace" hidden>
+    <div class="work">
+      <div class="card">
+        <div class="card-h">
+          <h3 id="previewTitle">Preview</h3>
+          <span class="spacer"></span>
+          <span id="cropState" class="pill">page 1</span>
+        </div>
+        <div class="card-b">
+          <div id="stageWrap"><div id="stage"><canvas id="pageCanvas"></canvas>
+            <div id="crop"><span class="hnd nw"></span><span class="hnd ne"></span><span class="hnd sw"></span><span class="hnd se"></span></div>
+          </div></div>
+          <div class="pagenav">
+            <button class="btn ghost" id="prevPg" aria-label="Previous page">&larr;</button>
+            <span id="pgLabel">Page 1 / 1</span>
+            <button class="btn ghost" id="nextPg" aria-label="Next page">&rarr;</button>
+          </div>
+          <p class="hint" id="previewHint">Drag the box over the shipping label; drag corners to resize. Saved per platform.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Output settings</h3></div>
+        <div class="card-b controls">
+          <div class="ctl" id="modeCtl">
+            <label>Mode</label>
+            <div class="seg" id="modeSeg">
+              <button data-mode="crop" aria-pressed="true">Crop to 4&times;6</button>
+              <button data-mode="note" aria-pressed="false">Full page + Note</button>
+            </div>
+          </div>
+          <div id="autoInfo" class="hint" hidden style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px">Flipkart labels are cropped <b>and</b> sorted by product automatically — nothing to adjust. It runs the moment you upload.</div>
+
+          <div id="cropControls">
+            <div class="ctl">
+              <label>Rotate</label>
+              <div class="seg" id="rotSeg">
+                <button data-rot="0" aria-pressed="true">0&deg;</button>
+                <button data-rot="90" aria-pressed="false">90&deg;</button>
+                <button data-rot="180" aria-pressed="false">180&deg;</button>
+                <button data-rot="270" aria-pressed="false">270&deg;</button>
+              </div>
+            </div>
+            <div class="ctl" style="margin-top:12px">
+              <label>Crop tools</label>
+              <div class="row">
+                <button class="btn" id="trimBtn">Trim blanks</button>
+                <button class="btn" id="fullBtn">Whole page</button>
+                <button class="btn" id="saveCrop">Save crop</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="noteControls" hidden>
+            <div class="ctl">
+              <label>Thank-you note (printed below each label)</label>
+              <textarea id="noteText" spellcheck="false"></textarea>
+              <div class="row" style="margin-top:8px">
+                <button class="btn" id="saveNote">Save message</button>
+                <button class="btn ghost" id="resetNote">Reset default</button>
+              </div>
+              <p class="hint">First line is the heading. Blank lines add spacing. It's placed in the empty area under the label.</p>
+            </div>
+          </div>
+
+          <label class="check"><input type="checkbox" id="sortSku"> Sort pages by SKU (group same products together)</label>
+
+          <button class="btn primary block" id="genBtn">Generate</button>
+
+          <div class="ctl">
+            <label>Output</label>
+            <div id="out"><p class="empty">Nothing yet — set your options and press <b>Generate</b>.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <span class="count" id="count">0 ready</span>
+      <div class="grow">
+        <button class="btn" id="newBtn">Start over</button>
+        <button class="btn gold" id="saveBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+          Save as PDF
+        </button>
+        <button class="btn primary" id="printBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+          Print
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <footer><p class="foot-note">Everything runs in your browser — your invoices are never uploaded. Crop mode prints 4&times;6 labels; Note mode prints the full page with your message. Choose your printer (or Save as PDF) in the dialog. &middot; <b>v9</b></footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var pdfjsLib=window.pdfjsLib;
+  if(pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  var DEFAULT_NOTE=
+"Thank You!\n"+
+"\n"+
+"Your RABDATOR order was packed by hand, with care — just for you.\n"+
+"\n"+
+"We're a small family business, and your order truly makes our day.\n"+
+"We hope it serves you well and keeps you moving with ease.\n"+
+"\n"+
+"If it made you happy, a quick 5-star rating would mean the world to us.\n"+
+"\n"+
+"With love,   —   Team RABDATOR";
+
+  var DEFAULTS={
+    meesho:{x:0.02,y:0.02,w:0.96,h:0.64},
+    flipkart:{x:0.035,y:0.015,w:0.93,h:0.6},
+    amazon:{x:0.05,y:0.05,w:0.9,h:0.4},
+    custom:{x:0.05,y:0.05,w:0.9,h:0.9}
+  };
+  var DEFMODE={meesho:"plain",flipkart:"crop",amazon:"plain",custom:"crop"};
+  /* AUTO value = the mode a platform runs automatically on upload, with no manual UI.
+     "crop" = crop to 4x6 · "note" = full page + thank-you note · "plain" = full page, no note */
+  var AUTO={flipkart:"crop",meesho:"plain",amazon:"plain"};
+
+  var state={platform:"meesho",mode:"note",pdf:null,pageNum:1,pageCount:0,rot:0,
+    crop:{x:0.05,y:0.05,w:0.9,h:0.5},labels:[]};
+
+  var $=function(id){return document.getElementById(id);};
+  var canvas=$("pageCanvas"),cropEl=$("crop"),ctx=canvas.getContext("2d");
+
+  // ---------- storage ----------
+  function kCrop(p){return "labelsnip.crop."+p;} function kMode(p){return "labelsnip.mode."+p;}
+  function loadCrop(p){try{var v=localStorage.getItem(kCrop(p));if(v)return JSON.parse(v);}catch(e){}return Object.assign({},DEFAULTS[p]||DEFAULTS.custom);}
+  function loadMode(p){try{var v=localStorage.getItem(kMode(p));if(v)return v;}catch(e){}return DEFMODE[p]||"crop";}
+  function loadNote(){try{var v=localStorage.getItem("labelsnip.note");if(v!=null)return v;}catch(e){}return DEFAULT_NOTE;}
+  function loadSort(){try{var v=localStorage.getItem("labelsnip.sort");if(v===null)return true;return v==="1";}catch(e){return true;}}
+  function flash(txt){var s=$("cropState");var old=s.textContent,oc=s.className;s.textContent=txt;s.className="pill saved";setTimeout(function(){s.textContent=old;s.className=oc;},1300);}
+
+  // ---------- platform / mode ----------
+  function applyModeUI(){
+    var autoMode=AUTO[state.platform];              // "crop" | "note" | "plain" | undefined
+    var auto=!!autoMode;
+    if(auto) state.mode=autoMode;
+    var crop=state.mode==="crop",note=state.mode==="note",plain=state.mode==="plain";
+    $("modeCtl").hidden=auto;                         // mode toggle only for manual (Custom)
+    $("cropControls").hidden=!(crop&&!auto);          // manual crop tools only
+    $("noteControls").hidden=!note;                   // note editor shows in note mode (Meesho + Custom)
+    $("genBtn").hidden=auto&&!note;                   // auto crop/plain run on upload; note keeps Generate for re-runs
+    cropEl.style.display=(crop&&!auto)?"block":"none";
+    var ai=$("autoInfo");
+    ai.hidden=!(auto&&!note);                         // banner for Flipkart(crop)+Amazon(plain); Meesho uses the note editor
+    if(state.platform==="flipkart") ai.innerHTML="<b>Flipkart</b> &mdash; labels are cropped to 4&times;6 <b>and</b> sorted by product automatically. It runs the moment you upload &mdash; just press Print.";
+    else if(state.platform==="amazon") ai.innerHTML="<b>Amazon</b> &mdash; full invoice pages, sorted by product automatically. No cropping, no note. It runs the moment you upload.";
+    else if(state.platform==="meesho") ai.innerHTML="<b>Meesho</b> &mdash; full label pages, sorted by product automatically. No cropping, no note. It runs the moment you upload.";
+    $("previewTitle").textContent=auto?(plain?"Sorted labels":(crop?"Auto-cropped preview":"Full-page preview")):(crop?"Set the crop box":"Full-page preview");
+    $("previewHint").textContent=auto
+      ?(plain?"Full pages print as-is, sorted by product — nothing to adjust."
+        :(crop?"Flipkart labels are cropped automatically — no adjustment needed."
+          :"Pages print full with your note below, sorted by product — automatically. Edit the message any time, then press Generate."))
+      :(crop?"Drag the box over the shipping label; drag corners to resize. Saved per platform."
+        :"The whole page prints as-is; your note is added in the blank area below. Pages print at A4.");
+    document.querySelectorAll("#modeSeg button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.mode===state.mode?"true":"false");});
+  }
+  document.querySelectorAll("#modeSeg button").forEach(function(b){
+    b.addEventListener("click",function(){state.mode=b.dataset.mode;try{localStorage.setItem(kMode(state.platform),state.mode);}catch(e){}applyModeUI();if(state.pdf&&state.mode==="crop")placeCropFromNormalized();});
+  });
+  document.querySelectorAll(".plat").forEach(function(b){
+    b.addEventListener("click",function(){
+      document.querySelectorAll(".plat").forEach(function(x){x.setAttribute("aria-pressed","false");});
+      b.setAttribute("aria-pressed","true");
+      state.platform=b.dataset.plat; state.crop=loadCrop(state.platform); state.mode=loadMode(state.platform);
+      applyModeUI();
+      resetToUpload();   // each marketplace starts fresh — upload that marketplace's own PDF
+    });
+  });
+
+  // Clear the loaded file and return to the upload screen (used on tab switch + Refresh).
+  function resetToUpload(){
+    state.pdf=null; state.labels=[]; state.pageNum=1; state.pageCount=0;
+    try{if(typeof fi!=="undefined")fi.value="";}catch(e){}
+    var ws=$("workspace"); if(ws)ws.hidden=true;
+    var d=$("dropZone"); if(d)d.hidden=false;
+    var out=$("out"); if(out)out.innerHTML='<p class="empty">Nothing yet — upload a PDF.</p>';
+    var pb=$("printBtn"),sb=$("saveBtn"); if(pb)pb.disabled=true; if(sb)sb.disabled=true;
+    var c=$("count"); if(c)c.textContent="0 ready";
+  }
+
+  // ---------- upload ----------
+  var dz=$("dropZone"),fi=$("fileInput");
+  dz.addEventListener("click",function(){fi.click();});
+  dz.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click();}});
+  dz.addEventListener("dragover",function(e){e.preventDefault();dz.classList.add("hot");});
+  dz.addEventListener("dragleave",function(){dz.classList.remove("hot");});
+  dz.addEventListener("drop",function(e){e.preventDefault();dz.classList.remove("hot");if(e.dataTransfer.files[0])openFile(e.dataTransfer.files[0]);});
+  fi.addEventListener("change",function(){if(fi.files[0])openFile(fi.files[0]);});
+
+  function openFile(file){
+    if(!pdfjsLib){alert("PDF engine failed to load. Check your internet connection and reopen LabelSnip.");return;}
+    var fr=new FileReader();
+    fr.onload=function(){
+      pdfjsLib.getDocument({data:new Uint8Array(fr.result)}).promise.then(function(pdf){
+        state.pdf=pdf;state.pageCount=pdf.numPages;state.pageNum=1;
+        dz.hidden=true;$("workspace").hidden=false; applyModeUI();
+        renderPage(1).then(function(){ if(AUTO[state.platform]){ state.crop=Object.assign({},DEFAULTS[state.platform]); runGenerate(); } else if(state.mode==="crop"){ placeCropFromNormalized(); } });
+      }).catch(function(err){console.error(err);alert("Could not read this PDF. Try re-downloading it from the seller panel.");});
+    };
+    fr.readAsArrayBuffer(file);
+  }
+
+  // ---------- preview ----------
+  function renderPage(n){
+    return state.pdf.getPage(n).then(function(page){
+      var vp1=page.getViewport({scale:1});
+      var maxW=Math.min(560,(document.getElementById("stageWrap").clientWidth||520)-4);
+      var scale=maxW/vp1.width;
+      var vp=page.getViewport({scale:scale});
+      canvas.width=Math.round(vp.width);canvas.height=Math.round(vp.height);
+      $("pgLabel").textContent="Page "+n+" / "+state.pageCount;
+      $("cropState").textContent="page "+n;
+      return page.render({canvasContext:ctx,viewport:vp}).promise;
+    });
+  }
+  $("prevPg").addEventListener("click",function(){if(state.pageNum>1){state.pageNum--;renderPage(state.pageNum).then(function(){if(state.mode==="crop")placeCropFromNormalized();});}});
+  $("nextPg").addEventListener("click",function(){if(state.pageNum<state.pageCount){state.pageNum++;renderPage(state.pageNum).then(function(){if(state.mode==="crop")placeCropFromNormalized();});}});
+
+  // ---------- crop box ----------
+  function placeCropFromNormalized(){var c=state.crop;setCropPx(c.x*canvas.width,c.y*canvas.height,c.w*canvas.width,c.h*canvas.height);}
+  function setCropPx(l,t,w,h){var W=canvas.width,H=canvas.height;w=Math.max(24,w);h=Math.max(24,h);
+    l=Math.max(0,Math.min(l,W-w));t=Math.max(0,Math.min(t,H-h));if(l+w>W)w=W-l;if(t+h>H)h=H-t;
+    cropEl.style.left=l+"px";cropEl.style.top=t+"px";cropEl.style.width=w+"px";cropEl.style.height=h+"px";
+    state.crop={x:l/W,y:t/H,w:w/W,h:h/H};}
+  var drag=null;
+  function pt(e){var r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+  cropEl.addEventListener("pointerdown",function(e){var mode=e.target.classList.contains("hnd")?e.target.classList[1]:"move";
+    drag={mode:mode,start:pt(e),box:{l:cropEl.offsetLeft,t:cropEl.offsetTop,w:cropEl.offsetWidth,h:cropEl.offsetHeight}};
+    cropEl.setPointerCapture(e.pointerId);e.preventDefault();});
+  cropEl.addEventListener("pointermove",function(e){if(!drag)return;var p=pt(e),dx=p.x-drag.start.x,dy=p.y-drag.start.y,b=drag.box;
+    if(drag.mode==="move"){setCropPx(b.l+dx,b.t+dy,b.w,b.h);}else{var l=b.l,t=b.t,w=b.w,h=b.h;
+      if(drag.mode.indexOf("w")>-1){l=b.l+dx;w=b.w-dx;}if(drag.mode.indexOf("e")>-1){w=b.w+dx;}
+      if(drag.mode.indexOf("n")>-1){t=b.t+dy;h=b.h-dy;}if(drag.mode.indexOf("s")>-1){h=b.h+dy;}setCropPx(l,t,w,h);}});
+  cropEl.addEventListener("pointerup",function(e){drag=null;try{cropEl.releasePointerCapture(e.pointerId);}catch(x){}});
+
+  document.querySelectorAll("#rotSeg button").forEach(function(b){b.addEventListener("click",function(){
+    document.querySelectorAll("#rotSeg button").forEach(function(x){x.setAttribute("aria-pressed","false");});
+    b.setAttribute("aria-pressed","true");state.rot=parseInt(b.dataset.rot,10);});});
+  $("fullBtn").addEventListener("click",function(){setCropPx(0,0,canvas.width,canvas.height);});
+  $("saveCrop").addEventListener("click",function(){try{localStorage.setItem(kCrop(state.platform),JSON.stringify(state.crop));}catch(e){}flash("crop saved");});
+  $("trimBtn").addEventListener("click",function(){var W=canvas.width,H=canvas.height,d=ctx.getImageData(0,0,W,H).data,
+    minX=W,minY=H,maxX=0,maxY=0,found=false,thr=244;
+    for(var y=0;y<H;y+=2)for(var x=0;x<W;x+=2){var i=(y*W+x)*4;if(d[i]<thr||d[i+1]<thr||d[i+2]<thr){found=true;if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}}
+    if(found){var p=6;setCropPx(minX-p,minY-p,(maxX-minX)+p*2,(maxY-minY)+p*2);}});
+
+  // ---------- note ----------
+  $("noteText").value=loadNote();
+  $("saveNote").addEventListener("click",function(){try{localStorage.setItem("labelsnip.note",$("noteText").value);}catch(e){}flash("message saved");});
+  $("resetNote").addEventListener("click",function(){$("noteText").value=DEFAULT_NOTE;try{localStorage.setItem("labelsnip.note",DEFAULT_NOTE);}catch(e){}});
+  $("sortSku").checked=loadSort();
+  $("sortSku").addEventListener("change",function(){try{localStorage.setItem("labelsnip.sort",this.checked?"1":"0");}catch(e){}});
+
+  // ---------- SKU extraction ----------
+  function skuForPage(n){
+    return state.pdf.getPage(n).then(function(page){return page.getTextContent();}).then(function(tc){
+      var text=tc.items.map(function(i){return i.str;}).join(" ").replace(/\s+/g," ");
+      var m=text.match(/RABDATOR[-A-Za-z0-9]+/i);
+      if(m) return m[0].toUpperCase();
+      m=text.match(/SKU[:\s|]+([A-Za-z0-9][A-Za-z0-9\- ]{2,34})/i);
+      if(m) return m[1].trim().toUpperCase();
+      return "UNKNOWN";
+    }).catch(function(){return "UNKNOWN";});
+  }
+
+  // ---------- generate ----------
+  function runGenerate(){
+    var btn=$("genBtn");btn.disabled=true;btn.textContent="Generating…";state.labels=[];
+    if(state.mode==="crop"){try{localStorage.setItem(kCrop(state.platform),JSON.stringify(state.crop));}catch(e){}}
+    else if(state.mode==="note"){try{localStorage.setItem("labelsnip.note",$("noteText").value);}catch(e){}}
+
+    var order=[];for(var i=1;i<=state.pageCount;i++)order.push(i);
+    var skuMap={};
+    var doSort = $("sortSku").checked || !!AUTO[state.platform];
+    state._sorted = doSort;
+    var pre = doSort
+      ? Promise.all(order.map(function(n){return skuForPage(n).then(function(s){skuMap[n]=s;});})).then(function(){
+          order.sort(function(a,b){ if(skuMap[a]<skuMap[b])return -1; if(skuMap[a]>skuMap[b])return 1; return a-b; });
+        })
+      : Promise.resolve();
+
+    pre.then(function(){
+      var seq=Promise.resolve();
+      order.forEach(function(pn){
+        seq=seq.then(function(){
+          var sp = (pn in skuMap)?Promise.resolve(skuMap[pn]):skuForPage(pn);
+          return sp.then(function(sku){
+            var gen = (state.platform==="flipkart"&&AUTO.flipkart) ? flipkartAutoCrop(pn)
+                    : state.mode==="crop" ? cropPage(pn)
+                    : state.mode==="note" ? fullPageWithNote(pn)
+                    : fullPagePlain(pn);
+            return gen.then(function(url){ state.labels.push({url:url,sku:sku,page:pn}); });
+          });
+        });
+      });
+      return seq;
+    }).then(function(){ paintOutput(); btn.disabled=false; btn.textContent="Generate"; });
+  }
+  $("genBtn").addEventListener("click",runGenerate);
+
+  function renderFull(n,targetW){
+    return state.pdf.getPage(n).then(function(page){
+      var vp1=page.getViewport({scale:1});
+      var scale=Math.min(3.2,Math.max(1.4,targetW/vp1.width));
+      var vp=page.getViewport({scale:scale});
+      var cv=document.createElement("canvas");cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+      return page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise.then(function(){return cv;});
+    });
+  }
+
+  function cropPage(n){
+    var c=state.crop;
+    return renderFull(n, 1240/Math.max(0.2,c.w)).then(function(full){
+      var sx=Math.round(c.x*full.width),sy=Math.round(c.y*full.height),sw=Math.round(c.w*full.width),sh=Math.round(c.h*full.height);
+      var out=document.createElement("canvas");
+      if(state.rot===90||state.rot===270){out.width=sh;out.height=sw;}else{out.width=sw;out.height=sh;}
+      var o=out.getContext("2d");o.fillStyle="#fff";o.fillRect(0,0,out.width,out.height);
+      o.save();o.translate(out.width/2,out.height/2);o.rotate(state.rot*Math.PI/180);
+      o.drawImage(full,sx,sy,sw,sh,-sw/2,-sh/2,sw,sh);o.restore();
+      return out.toDataURL("image/jpeg",0.92);
+    });
+  }
+
+  // Flipkart: every label has a dashed cut line separating it from whatever is below
+  // (Tax Invoice, or just blank page). Find that dashed line, crop the label ABOVE it,
+  // then trim tight to the label box so it fills the 4x6 page with no margins / no dashes.
+  function flipkartAutoCrop(n){
+    return state.pdf.getPage(n).then(function(page){
+      var vp1=page.getViewport({scale:1});
+      var scale=Math.min(3.2,Math.max(1.6,1240/vp1.width));
+      var vp=page.getViewport({scale:scale});
+      var cv=document.createElement("canvas");cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+      var cx=cv.getContext("2d");
+      return page.render({canvasContext:cx,viewport:vp}).promise.then(function(){
+        return page.getTextContent().then(function(tc){
+          var W=cv.width,H=cv.height,img=cx.getImageData(0,0,W,H).data,DK=150,halfW=W/2;
+          // 1) Topmost dashed cut line = a broken line spanning (almost) the full page width.
+          var cut=-1;
+          for(var y=Math.round(H*0.12);y<H-2 && cut<0;y++){
+            var left=-1,right=-1,cnt=0;
+            for(var x=0;x<W;x+=2){var i=(y*W+x)*4;if(img[i]<DK&&img[i+1]<DK&&img[i+2]<DK){if(left<0)left=x;right=x;cnt++;}}
+            if(left>=0 && left<=W*0.08 && right>=W*0.92 && cnt<halfW*0.9 && cnt>halfW*0.08) cut=y; // broken => dashed, not solid
+          }
+          var limit;
+          if(cut>0){ limit=Math.max(80,cut-Math.round(H*0.012)); }
+          else {
+            // 2) Fallback: cut above "Tax Invoice" text; else use the whole page.
+            var bY=H;
+            tc.items.forEach(function(it){var s=(it.str||"").replace(/\s+/g,"").toLowerCase();
+              if(s.indexOf("taxinvoice")>-1){var tx=pdfjsLib.Util.transform(vp.transform,it.transform);var topY=tx[5]-(it.height?it.height*scale:14);if(topY<bY)bY=topY;}});
+            limit=(bY<H)?Math.max(80,bY-8):H;
+          }
+          // 3) Trim tight to the label content within [0, limit].
+          var minX=W,minY=limit,maxX=0,maxY=0,hit=false,T=235;
+          for(var yy=0;yy<limit;yy+=2)for(var xx=0;xx<W;xx+=2){var j=(yy*W+xx)*4;if(img[j]<T||img[j+1]<T||img[j+2]<T){hit=true;if(xx<minX)minX=xx;if(xx>maxX)maxX=xx;if(yy<minY)minY=yy;if(yy>maxY)maxY=yy;}}
+          if(!hit){minX=0;minY=0;maxX=W;maxY=limit;}
+          var sx=Math.max(0,minX),sy=Math.max(0,minY),ex=Math.min(W,maxX+2),ey=Math.min(limit,maxY+2);
+          var sw=Math.max(10,ex-sx),sh=Math.max(10,ey-sy);
+          var m=Math.round(sw*0.018);   // thin, even white margin on all four sides (label already has its own border)
+          var out=document.createElement("canvas");out.width=sw+2*m;out.height=sh+2*m;
+          var oc=out.getContext("2d");oc.fillStyle="#fff";oc.fillRect(0,0,out.width,out.height);
+          oc.drawImage(cv,sx,sy,sw,sh,m,m,sw,sh);
+          return out.toDataURL("image/jpeg",0.92);
+        });
+      });
+    });
+  }
+
+  function fullPageWithNote(n){
+    return renderFull(n,1240).then(function(full){
+      var W=full.width,H=full.height;
+      // find content bottom
+      var d=full.getContext("2d").getImageData(0,0,W,H).data,contentBottom=0,thr=244;
+      for(var y=H-1;y>=0;y-=2){var rowHas=false;for(var x=0;x<W;x+=3){var i=(y*W+x)*4;if(d[i]<thr||d[i+1]<thr||d[i+2]<thr){rowHas=true;break;}}if(rowHas){contentBottom=y;break;}}
+      var noteTop=Math.min(contentBottom+Math.round(H*0.03),H-10);
+      drawNote(full.getContext("2d"),W,noteTop,H,$("noteText").value);
+      return full.toDataURL("image/jpeg",0.9);
+    });
+  }
+
+  function fullPagePlain(n){
+    return renderFull(n,1240).then(function(full){ return full.toDataURL("image/jpeg",0.9); });
+  }
+
+  function roundRect(o,x,y,w,h,r){o.beginPath();o.moveTo(x+r,y);o.arcTo(x+w,y,x+w,y+h,r);o.arcTo(x+w,y+h,x,y+h,r);o.arcTo(x,y+h,x,y,r);o.arcTo(x,y,x+w,y,r);o.closePath();}
+
+  function drawNote(o,W,top,bottom,text){
+    var FF="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+    var avail=bottom-top;
+    var cardW=Math.round(W*0.84), cardX=Math.round((W-cardW)/2);
+    var pad=Math.round(W*0.05), maxTextW=cardW-pad*2;
+    var lines=text.split("\n");
+    var lastIdx=-1; lines.forEach(function(ln,i){ if(ln.trim()!=="") lastIdx=i; }); // only the final line is the signature
+
+    // Build a layout at a given base font size; returns tokens + total content height.
+    function build(base){
+      var items=[],H=0;
+      var starH=Math.round(base*1.3);
+      items.push({type:"stars",size:starH}); H+=starH+Math.round(base*0.8);
+      lines.forEach(function(ln,idx){
+        if(ln.trim()===""){var g=Math.round(base*0.5);items.push({type:"gap",h:g});H+=g;return;}
+        var isHead=idx===0, isSig=!isHead&&idx===lastIdx;
+        var size=isHead?Math.round(base*1.75):(isSig?Math.round(base*1.1):base);
+        o.font=(isHead||isSig?"700 ":"400 ")+size+"px "+FF;
+        var words=ln.replace(/\s+/g," ").trim().split(" "),line="",outl=[];
+        words.forEach(function(w){var t=line?line+" "+w:w;if(o.measureText(t).width>maxTextW&&line){outl.push(line);line=w;}else line=t;});
+        if(line)outl.push(line);
+        outl.forEach(function(t){var lh=Math.round(size*1.42);items.push({type:"line",text:t,size:size,head:isHead,sig:isSig,lh:lh});H+=lh;});
+        if(isHead){var g2=Math.round(base*0.55);items.push({type:"gap",h:g2});H+=g2;}
+      });
+      return {items:items,H:H};
+    }
+
+    var base=Math.max(17,Math.round(W*0.0215));
+    var r=build(base), needed=r.H+pad*2;
+    if(avail>90 && needed>avail){ base=Math.max(12,Math.floor(base*(avail/needed)*0.97)); r=build(base); needed=r.H+pad*2; pad=Math.round(pad*0.85); }
+    var cardH=needed;
+
+    // Card panel: soft tint, teal hairline border, gold accent bar on top edge.
+    var rad=Math.round(W*0.016);
+    roundRect(o,cardX,top,cardW,cardH,rad); o.fillStyle="#f4fafc"; o.fill();
+    o.lineWidth=Math.max(1.3,W*0.0016); o.strokeStyle="#b9dde6"; o.stroke();
+    roundRect(o,cardX,top,cardW,Math.round(cardH*0.5),rad); // clip-ish accent not needed; draw a short gold bar instead
+    o.fillStyle="#c79a3a"; o.fillRect(cardX+rad, top, cardW-rad*2, Math.max(3,Math.round(W*0.004)));
+
+    o.textAlign="center";
+    var y=top+pad;
+    r.items.forEach(function(it){
+      if(it.type==="gap"){ y+=it.h; return; }
+      if(it.type==="stars"){
+        o.font="700 "+it.size+"px Arial,sans-serif"; o.fillStyle="#d7a528";
+        o.fillText("★  ★  ★  ★  ★", W/2, y+it.size*0.85); y+=it.size+Math.round(base*0.8); return;
+      }
+      o.font=(it.head||it.sig?"700 ":"400 ")+it.size+"px "+FF;
+      o.fillStyle=it.head?"#0e7490":(it.sig?"#0e7490":"#2b3139");
+      o.fillText(it.text, W/2, y+it.size*0.82);
+      y+=it.lh;
+    });
+  }
+
+  function paintOutput(){
+    var out=$("out");out.innerHTML="";
+    if(!state.labels.length){out.innerHTML='<p class="empty">Nothing generated.</p>';return;}
+    state.labels.forEach(function(L,i){
+      var d=document.createElement("div");d.className="lab";
+      d.innerHTML='<img alt="Label '+(i+1)+'" src="'+L.url+'"><b>'+esc(L.sku)+'</b><span>#'+(i+1)+' · pg '+L.page+'</span>';
+      out.appendChild(d);
+    });
+    $("count").textContent=state.labels.length+" ready"+( state._sorted?" · sorted by SKU":"" );
+    $("printBtn").disabled=false;$("saveBtn").disabled=false;
+  }
+  function esc(s){return String(s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
+
+  // ---------- print ----------
+  $("printBtn").addEventListener("click",function(){
+    if(!state.labels.length)return;
+    var isCrop=state.mode==="crop";
+    var pageCSS=isCrop?"size:4in 6in;margin:0":"size:A4;margin:6mm";
+    var cellCSS=isCrop?"width:4in;height:6in":"width:100%;height:auto";
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>LabelSnip</title><style>'+
+      '@page{'+pageCSS+'}html,body{margin:0;padding:0}'+
+      '.l{display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden;'+cellCSS+'}'+
+      '.l:last-child{page-break-after:auto}.l img{max-width:100%;max-height:100%}'+
+      '</style></head><body>'+state.labels.map(function(L){return '<div class="l"><img src="'+L.url+'"></div>';}).join("")+'</body></html>';
+    var ifr=document.createElement("iframe");ifr.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+    document.body.appendChild(ifr);var doc=ifr.contentWindow.document;doc.open();doc.write(html);doc.close();
+    ifr.onload=function(){setTimeout(function(){ifr.contentWindow.focus();ifr.contentWindow.print();setTimeout(function(){document.body.removeChild(ifr);},900);},250);};
+  });
+
+  // ---------- save pdf ----------
+  $("saveBtn").addEventListener("click",function(){
+    if(!state.labels.length)return;
+    var jsPDF=window.jspdf&&window.jspdf.jsPDF;if(!jsPDF){alert("PDF saver failed to load — use Print → Save as PDF instead.");return;}
+    var isCrop=state.mode==="crop",fmt=isCrop?[4,6]:"a4",doc=new jsPDF({unit:"in",format:fmt,orientation:"portrait"});
+    var pw=isCrop?4:8.27, ph=isCrop?6:11.69, done=0;
+    state.labels.forEach(function(L,i){
+      var img=new Image();
+      img.onload=function(){
+        if(i>0)doc.addPage(fmt,"portrait");
+        var m=isCrop?0:0.24, aw=pw-2*m, ah=ph-2*m;
+        var r=Math.min(aw/img.width,ah/img.height),w=img.width*r,h=img.height*r;
+        doc.addImage(L.url,"JPEG",(pw-w)/2,(ph-h)/2,w,h);
+        if(++done===state.labels.length)doc.save("labelsnip-"+state.platform+".pdf");
+      };
+      img.src=L.url;
+    });
+  });
+
+  $("newBtn").addEventListener("click",function(){location.reload();});
+  $("refreshApp").addEventListener("click",function(){
+    // Full reset — clear everything so a new PDF can be uploaded. Reload hard if a file is loaded.
+    if(state.pdf){ location.reload(); } else { resetToUpload(); }
+  });
+
+  // init
+  state.crop=loadCrop(state.platform);state.mode=loadMode(state.platform);applyModeUI();
+})();
+</script>
+</body>
+</html>
