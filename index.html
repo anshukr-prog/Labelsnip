@@ -113,9 +113,9 @@
   <div class="wrap bar">
     <div class="logo">
       <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 20.5 9.5"/><path d="M3 21l3-1 11.5-11.5-2-2L4 18z"/><path d="M15 5l4 4"/></svg></span>
-      <span>LabelSnip<small>Crop · Note · Print</small></span>
+      <span>LabelSnip<small>Upload · Sort · Print</small></span>
     </div>
-    <div class="tagline">Crop to 4&times;6, or print full labels with a thank-you note — sorted by SKU.</div>
+    <div class="tagline">Pick your marketplace, upload the PDF, press Generate. Auto-sorted and print-ready.</div>
   </div>
 </header>
 
@@ -200,7 +200,7 @@
             </div>
           </div>
 
-          <label class="check"><input type="checkbox" id="sortSku"> Sort pages by SKU (group same products together)</label>
+          <label class="check" hidden><input type="checkbox" id="sortSku" checked> Sort pages by SKU (group same products together)</label>
 
           <button class="btn primary block" id="genBtn">Generate</button>
 
@@ -228,7 +228,7 @@
     </div>
   </section>
 
-  <footer><p class="foot-note">Everything runs in your browser — your invoices are never uploaded. Crop mode prints 4&times;6 labels; Note mode prints the full page with your message. Choose your printer (or Save as PDF) in the dialog. &middot; <b>v9</b></footer>
+  <footer><p class="foot-note">Everything runs in your browser — your invoices are never uploaded. Flipkart prints auto-cropped 4&times;6 labels; Meesho, Amazon &amp; Custom print full pages. All sorted by product. Choose your printer (or Save as PDF) in the dialog. &middot; <b>v10</b></footer>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -260,7 +260,7 @@
   var DEFMODE={meesho:"plain",flipkart:"crop",amazon:"plain",custom:"crop"};
   /* AUTO value = the mode a platform runs automatically on upload, with no manual UI.
      "crop" = crop to 4x6 · "note" = full page + thank-you note · "plain" = full page, no note */
-  var AUTO={flipkart:"crop",meesho:"plain",amazon:"plain"};
+  var AUTO={flipkart:"crop",meesho:"plain",amazon:"plain",custom:"plain"};
 
   var state={platform:"meesho",mode:"note",pdf:null,pageNum:1,pageCount:0,rot:0,
     crop:{x:0.05,y:0.05,w:0.9,h:0.5},labels:[]};
@@ -285,17 +285,18 @@
     $("modeCtl").hidden=auto;                         // mode toggle only for manual (Custom)
     $("cropControls").hidden=!(crop&&!auto);          // manual crop tools only
     $("noteControls").hidden=!note;                   // note editor shows in note mode (Meesho + Custom)
-    $("genBtn").hidden=auto&&!note;                   // auto crop/plain run on upload; note keeps Generate for re-runs
+    $("genBtn").hidden=false;                         // every tab: no options, just press Generate
     cropEl.style.display=(crop&&!auto)?"block":"none";
     var ai=$("autoInfo");
     ai.hidden=!(auto&&!note);                         // banner for Flipkart(crop)+Amazon(plain); Meesho uses the note editor
-    if(state.platform==="flipkart") ai.innerHTML="<b>Flipkart</b> &mdash; labels are cropped to 4&times;6 <b>and</b> sorted by product automatically. It runs the moment you upload &mdash; just press Print.";
-    else if(state.platform==="amazon") ai.innerHTML="<b>Amazon</b> &mdash; full invoice pages, sorted by product automatically. No cropping, no note. It runs the moment you upload.";
-    else if(state.platform==="meesho") ai.innerHTML="<b>Meesho</b> &mdash; full label pages, sorted by product automatically. No cropping, no note. It runs the moment you upload.";
+    if(state.platform==="flipkart") ai.innerHTML="<b>Flipkart</b> &mdash; each label is auto-cropped to 4&times;6 and sorted by product. Just press <b>Generate</b>, then Print.";
+    else if(state.platform==="amazon") ai.innerHTML="<b>Amazon</b> &mdash; full invoice pages, sorted by product. No cropping, no note. Just press <b>Generate</b>, then Print.";
+    else if(state.platform==="meesho") ai.innerHTML="<b>Meesho</b> &mdash; full label pages, sorted by product. No cropping, no note. Just press <b>Generate</b>, then Print.";
+    else if(state.platform==="custom") ai.innerHTML="<b>Custom</b> &mdash; full pages, sorted by product. No cropping, no note. Just press <b>Generate</b>, then Print.";
     $("previewTitle").textContent=auto?(plain?"Sorted labels":(crop?"Auto-cropped preview":"Full-page preview")):(crop?"Set the crop box":"Full-page preview");
     $("previewHint").textContent=auto
-      ?(plain?"Full pages print as-is, sorted by product — nothing to adjust."
-        :(crop?"Flipkart labels are cropped automatically — no adjustment needed."
+      ?(plain?"Sorted by product automatically — press Generate to build your print-ready pages."
+        :(crop?"Labels are auto-cropped and sorted — press Generate to build them."
           :"Pages print full with your note below, sorted by product — automatically. Edit the message any time, then press Generate."))
       :(crop?"Drag the box over the shipping label; drag corners to resize. Saved per platform."
         :"The whole page prints as-is; your note is added in the blank area below. Pages print at A4.");
@@ -341,7 +342,7 @@
       pdfjsLib.getDocument({data:new Uint8Array(fr.result)}).promise.then(function(pdf){
         state.pdf=pdf;state.pageCount=pdf.numPages;state.pageNum=1;
         dz.hidden=true;$("workspace").hidden=false; applyModeUI();
-        renderPage(1).then(function(){ if(AUTO[state.platform]){ state.crop=Object.assign({},DEFAULTS[state.platform]); runGenerate(); } else if(state.mode==="crop"){ placeCropFromNormalized(); } });
+        renderPage(1);   // show a preview of the uploaded file; user presses Generate to build the labels
       }).catch(function(err){console.error(err);alert("Could not read this PDF. Try re-downloading it from the seller panel.");});
     };
     fr.readAsArrayBuffer(file);
