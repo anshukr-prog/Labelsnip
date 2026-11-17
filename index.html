@@ -69,6 +69,7 @@
 
   .pagenav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;color:var(--muted);font-size:.86rem}
   .controls{display:flex;flex-direction:column;gap:14px}
+  [hidden]{display:none!important}   /* ensure the hidden attribute wins over class display rules (.ctl/.check/etc.) */
   .ctl{display:flex;flex-direction:column;gap:6px}
   .ctl label{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -228,7 +229,7 @@
     </div>
   </section>
 
-  <footer><p class="foot-note">Everything runs in your browser — your invoices are never uploaded. Flipkart prints auto-cropped 4&times;6 labels; Meesho, Amazon &amp; Custom print full pages. All sorted by product. Choose your printer (or Save as PDF) in the dialog. &middot; <b>v10</b></footer>
+  <footer><p class="foot-note">Everything runs in your browser — your invoices are never uploaded. Flipkart prints auto-cropped 4&times;6 labels; Meesho, Amazon &amp; Custom print full pages. All sorted by product. Choose your printer (or Save as PDF) in the dialog. &middot; <b>v11</b></footer>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
